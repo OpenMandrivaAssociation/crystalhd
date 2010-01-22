@@ -1,0 +1,162 @@
+
+%define name	crystalhd
+%define version	0
+%define snap	20100120
+%define rel	1
+
+%define major	1
+%define libname	%mklibname crystalhd %major
+%define devname	%mklibname crystalhd -d
+
+Summary:	Broadcom Crystal HD decoder driver and library
+Name:		%name
+Version:	%version
+Release:	%mkrel 0.%snap.%rel
+License:	GPLv2 and LGPLv2
+Group:		System/Kernel and hardware
+URL:		http://www.broadcom.com/support/crystal_hd/
+# http://git.wilsonet.com/crystalhd.git/
+# firmware has no license yet
+Source:		%name-nofirmware-%snap.tar.xz
+# all 3 patches submitted upstream
+Patch0:		crystalhd-underlinking.patch
+Patch1:		crystalhd-drop-text-define.patch
+Patch2:		crystalhd-kernel-makefile.patch
+BuildRoot:	%{_tmppath}/%{name}-root
+
+%description
+Driver and support library for Broadcom Crystal HD hardware video
+decoder.
+
+To use the device, you need to copy the firmware file bcm70012fw.bin
+into /lib/firmware/ directory.
+
+%package -n dkms-%name
+Summary:	Broadcom Crystal HD decoder driver
+Group:		System/Kernel and hardware
+License:	GPLv2
+Requires:	dkms
+Requires(post): dkms
+Requires(preun): dkms
+
+%description -n dkms-%name
+DKMS driver for Broadcom Crystal HD hardware video decoder.
+
+To use the device, you need to copy the firmware file bcm70012fw.bin
+into /lib/firmware/ directory.
+
+%package -n lib%name-common
+Summary:	udev rules for Broadcom Crystal HD decoder
+Group:		System/Libraries
+License:	LGPLv2
+
+%description -n lib%name-common
+udev rules for Broadcom Crystal HD hardware video decoder.
+
+To use the device, you need to copy the firmware file bcm70012fw.bin
+into /lib/firmware/ directory.
+
+
+%package -n %libname
+Summary:	Broadcom Crystal HD decoder library
+Group:		System/Libraries
+License:	LGPLv2
+Provides:	%name = %version-%release
+Requires:	lib%name-common >= %{version}-%{release}
+
+%description -n %libname
+Support library for Broadcom Crystal HD hardware video decoder.
+
+To use the device, you need to copy the firmware file bcm70012fw.bin
+into /lib/firmware/ directory.
+
+%package -n %devname
+Summary:	Headers for libcrystalhd development
+Group:		Development/C
+License:	LGPLv2
+Requires:	%libname = %version
+Provides:	crystalhd-devel = %version-%release
+
+%description -n %devname
+This package contains the headers that are needed to compile
+applications that use libcrystalhd.
+
+%prep
+%setup -q -n %name
+%apply_patches
+
+# for install target
+mkdir -p firmware/fwbin/70012
+touch firmware/fwbin/70012/bcm70012fw.bin
+
+sed -i 's,\$(CRYSTALHD_ROOT),\$(src),g' driver/linux/Makefile.in
+
+%build
+%setup_compile_flags
+%make -C linux_lib/libcrystalhd BCGCC="g++ %optflags %{?ldflags}"
+
+%install
+rm -rf %{buildroot}
+%makeinstall_std -C linux_lib/libcrystalhd LIBDIR=%{_libdir}
+rm %{buildroot}/lib/firmware/bcm70012fw.bin
+
+install -d -m755 %{buildroot}%{_usrsrc}/%{name}-%{version}-%{release}/driver/linux
+install -m644 driver/linux/*.[ch] %{buildroot}%{_usrsrc}/%{name}-%{version}-%{release}/driver/linux
+# no thanks to autoconf:
+install -m644 driver/linux/Makefile.in %{buildroot}%{_usrsrc}/%{name}-%{version}-%{release}/driver/linux/Makefile
+cp -pr include %{buildroot}%{_usrsrc}/%{name}-%{version}-%{release}/
+
+cat > %{buildroot}%{_usrsrc}/%{name}-%{version}-%{release}/dkms.conf <<EOF
+PACKAGE_NAME="%{name}"
+PACKAGE_VERSION="%{version}-%{release}"
+AUTOINSTALL="yes"
+MAKE[0]="make -C \${kernel_source_dir} M=\\\$(pwd)/driver/linux CRYSTALHD_ROOT=\\\$(pwd)"
+CLEAN="make -C \${kernel_source_dir} M=\\\$(pwd)/driver/linux clean"
+BUILT_MODULE_NAME[0]="crystalhd"
+BUILT_MODULE_LOCATION[0]="driver/linux"
+DEST_MODULE_LOCATION[0]="/kernel"
+EOF
+
+install -d -m755 %{buildroot}%{_sysconfdir}/udev/rules.d
+cat > %{buildroot}%{_sysconfdir}/udev/rules.d/65-crystalhd.rules <<EOF
+KERNEL=="crystalhd", GROUP="video", ENV{ACL_MANAGE}="1"
+EOF
+
+%clean
+rm -rf %{buildroot}
+
+%post -n dkms-%{name}
+dkms add     -m %{name} -v %{version}-%{release} --rpm_safe_upgrade &&
+dkms build   -m %{name} -v %{version}-%{release} --rpm_safe_upgrade &&
+dkms install -m %{name} -v %{version}-%{release} --rpm_safe_upgrade --force
+true
+
+%preun -n dkms-%{name}
+dkms remove  -m %{name} -v %{version}-%{release} --rpm_safe_upgrade --all
+true
+
+%post -n lib%name-common
+# apply udev rules
+if [ "$1" = "1" ]; then
+	udevadm trigger --sysname-match=crystalhd || true
+fi
+
+%files -n dkms-%{name}
+%defattr(-,root,root)
+%dir %{_usrsrc}/%{name}-%{version}-%{release}
+%dir %{_usrsrc}/%{name}-%{version}-%{release}/driver
+%{_usrsrc}/%{name}-%{version}-%{release}/driver/linux
+%{_usrsrc}/%{name}-%{version}-%{release}/include
+%{_usrsrc}/%{name}-%{version}-%{release}/dkms.conf
+
+%files -n lib%name-common
+%{_sysconfdir}/udev/rules.d/65-crystalhd.rules
+
+%files -n %libname
+%{_libdir}/libcrystalhd.so.%{major}*
+
+%files -n %devname
+%doc examples
+%{_libdir}/libcrystalhd.so
+%dir %{_includedir}/lib%{name}
+%{_includedir}/lib%{name}/*.h
