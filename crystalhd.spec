@@ -1,10 +1,10 @@
 
 %define name	crystalhd
 %define version	0
-%define snap	20100120
+%define snap	20100702
 %define rel	1
 
-%define major	1
+%define major	2
 %define libname	%mklibname crystalhd %major
 %define devname	%mklibname crystalhd -d
 
@@ -18,18 +18,16 @@ URL:		http://www.broadcom.com/support/crystal_hd/
 # http://git.wilsonet.com/crystalhd.git/
 # firmware has no license yet
 Source:		%name-nofirmware-%snap.tar.xz
-# all 3 patches submitted upstream
-Patch0:		crystalhd-underlinking.patch
-Patch1:		crystalhd-drop-text-define.patch
-Patch2:		crystalhd-kernel-makefile.patch
 BuildRoot:	%{_tmppath}/%{name}-root
 
 %description
 Driver and support library for Broadcom Crystal HD hardware video
 decoder.
 
-To use the device, you need to copy the firmware file bcm70012fw.bin
-into /lib/firmware/ directory.
+To use the device, you need to copy the appropriate firmware file to
+the /lib/firmware directory:
+- BCM70012 devices: bcm70012fw.bin
+- BCM70015 devices: bcm70015fw.bin
 
 %package -n dkms-%name
 Summary:	Broadcom Crystal HD decoder driver
@@ -42,8 +40,10 @@ Requires(preun): dkms
 %description -n dkms-%name
 DKMS driver for Broadcom Crystal HD hardware video decoder.
 
-To use the device, you need to copy the firmware file bcm70012fw.bin
-into /lib/firmware/ directory.
+To use the device, you need to copy the appropriate firmware file to
+the /lib/firmware directory:
+- BCM70012 devices: bcm70012fw.bin
+- BCM70015 devices: bcm70015fw.bin
 
 %package -n lib%name-common
 Summary:	udev rules for Broadcom Crystal HD decoder
@@ -53,9 +53,10 @@ License:	LGPLv2
 %description -n lib%name-common
 udev rules for Broadcom Crystal HD hardware video decoder.
 
-To use the device, you need to copy the firmware file bcm70012fw.bin
-into /lib/firmware/ directory.
-
+To use the device, you need to copy the appropriate firmware file to
+the /lib/firmware directory:
+- BCM70012 devices: bcm70012fw.bin
+- BCM70015 devices: bcm70015fw.bin
 
 %package -n %libname
 Summary:	Broadcom Crystal HD decoder library
@@ -67,8 +68,10 @@ Requires:	lib%name-common >= %{version}-%{release}
 %description -n %libname
 Support library for Broadcom Crystal HD hardware video decoder.
 
-To use the device, you need to copy the firmware file bcm70012fw.bin
-into /lib/firmware/ directory.
+To use the device, you need to copy the appropriate firmware file to
+the /lib/firmware directory:
+- BCM70012 devices: bcm70012fw.bin
+- BCM70015 devices: bcm70015fw.bin
 
 %package -n %devname
 Summary:	Headers for libcrystalhd development
@@ -82,7 +85,7 @@ This package contains the headers that are needed to compile
 applications that use libcrystalhd.
 
 %prep
-%setup -q -n %name
+%setup -q -n %name-%snap
 %apply_patches
 
 # for install target
@@ -91,14 +94,24 @@ touch firmware/fwbin/70012/bcm70012fw.bin
 
 sed -i 's,\$(CRYSTALHD_ROOT),\$(src),g' driver/linux/Makefile.in
 
+cat > README.install.urpmi <<EOF
+To use a Crystal HD device, you need to copy the appropriate firmware
+file to the /lib/firmware directory:
+- BCM70012 devices: bcm70012fw.bin
+- BCM70015 devices: bcm70015fw.bin
+EOF
+
 %build
 %setup_compile_flags
 %make -C linux_lib/libcrystalhd BCGCC="g++ %optflags %{?ldflags}"
 
+mkdir -p firmware/fwbin/70015
+touch firmware/fwbin/70015/bcm70015fw.bin
+
 %install
 rm -rf %{buildroot}
 %makeinstall_std -C linux_lib/libcrystalhd LIBDIR=%{_libdir}
-rm %{buildroot}/lib/firmware/bcm70012fw.bin
+rm %{buildroot}/lib/firmware/bcm7001[25]fw.bin
 
 install -d -m755 %{buildroot}%{_usrsrc}/%{name}-%{version}-%{release}/driver/linux
 install -m644 driver/linux/*.[ch] %{buildroot}%{_usrsrc}/%{name}-%{version}-%{release}/driver/linux
@@ -110,7 +123,7 @@ cat > %{buildroot}%{_usrsrc}/%{name}-%{version}-%{release}/dkms.conf <<EOF
 PACKAGE_NAME="%{name}"
 PACKAGE_VERSION="%{version}-%{release}"
 AUTOINSTALL="yes"
-MAKE[0]="make -C \${kernel_source_dir} M=\\\$(pwd)/driver/linux CRYSTALHD_ROOT=\\\$(pwd)"
+MAKE[0]="make -C \${kernel_source_dir} M=\\\$(pwd)/driver/linux"
 CLEAN="make -C \${kernel_source_dir} M=\\\$(pwd)/driver/linux clean"
 BUILT_MODULE_NAME[0]="crystalhd"
 BUILT_MODULE_LOCATION[0]="driver/linux"
@@ -143,6 +156,7 @@ fi
 
 %files -n dkms-%{name}
 %defattr(-,root,root)
+%doc README.install.urpmi
 %dir %{_usrsrc}/%{name}-%{version}-%{release}
 %dir %{_usrsrc}/%{name}-%{version}-%{release}/driver
 %{_usrsrc}/%{name}-%{version}-%{release}/driver/linux
