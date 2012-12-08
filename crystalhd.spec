@@ -174,3 +174,16 @@ fi
 %{_libdir}/libcrystalhd.so
 %dir %{_includedir}/lib%{name}
 %{_includedir}/lib%{name}/*.h
+
+
+%changelog
+* Sat Jul 10 2010 Anssi Hannula <anssi@mandriva.org> 0-0.20100702.1mdv2011.0
++ Revision: 549974
+- new snapshot
+- new major
+- drop upstreamed patches
+
+* Sat Jan 23 2010 Anssi Hannula <anssi@mandriva.org> 0-0.20100120.1mdv2010.1
++ Revision: 495140
+- initial Mandriva release
+
