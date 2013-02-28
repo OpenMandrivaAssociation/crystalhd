@@ -1,12 +1,12 @@
 
-%define name	crystalhd
-%define version	0
-%define snap	20100702
-%define rel	1
+%define name crystalhd
+%define version 0
+%define snap 20100702
+%define rel 2
 
-%define major	2
-%define libname	%mklibname crystalhd %major
-%define devname	%mklibname crystalhd -d
+%define major 2
+%define libname %mklibname crystalhd %major
+%define devname %mklibname crystalhd -d
 
 Summary:	Broadcom Crystal HD decoder driver and library
 Name:		%name
@@ -18,7 +18,6 @@ URL:		http://www.broadcom.com/support/crystal_hd/
 # http://git.wilsonet.com/crystalhd.git/
 # firmware has no license yet
 Source:		%name-nofirmware-%snap.tar.xz
-BuildRoot:	%{_tmppath}/%{name}-root
 
 %description
 Driver and support library for Broadcom Crystal HD hardware video
@@ -34,8 +33,8 @@ Summary:	Broadcom Crystal HD decoder driver
 Group:		System/Kernel and hardware
 License:	GPLv2
 Requires:	dkms
-Requires(post): dkms
-Requires(preun): dkms
+Requires(post):	dkms
+Requires(preun):	dkms
 
 %description -n dkms-%name
 DKMS driver for Broadcom Crystal HD hardware video decoder.
@@ -109,7 +108,6 @@ mkdir -p firmware/fwbin/70015
 touch firmware/fwbin/70015/bcm70015fw.bin
 
 %install
-rm -rf %{buildroot}
 %makeinstall_std -C linux_lib/libcrystalhd LIBDIR=%{_libdir}
 rm %{buildroot}/lib/firmware/bcm7001[25]fw.bin
 
@@ -135,8 +133,6 @@ cat > %{buildroot}%{_sysconfdir}/udev/rules.d/65-crystalhd.rules <<EOF
 KERNEL=="crystalhd", GROUP="video", ENV{ACL_MANAGE}="1"
 EOF
 
-%clean
-rm -rf %{buildroot}
 
 %post -n dkms-%{name}
 dkms add     -m %{name} -v %{version}-%{release} --rpm_safe_upgrade &&
@@ -155,7 +151,6 @@ if [ "$1" = "1" ]; then
 fi
 
 %files -n dkms-%{name}
-%defattr(-,root,root)
 %doc README.install.urpmi
 %dir %{_usrsrc}/%{name}-%{version}-%{release}
 %dir %{_usrsrc}/%{name}-%{version}-%{release}/driver
