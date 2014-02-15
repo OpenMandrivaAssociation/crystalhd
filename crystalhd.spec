@@ -1,18 +1,17 @@
-%define snap	20100702
-%define major	2
+%define snap	20121105
+%define major	3
 %define libname	%mklibname crystalhd %{major}
 %define devname	%mklibname crystalhd -d
 
 Summary:	Broadcom Crystal HD decoder driver and library
 Name:		crystalhd
 Version:	0
-Release:	0.%{snap}.2
+Release:	0.%{snap}.1
 License:	GPLv2 and LGPLv2
 Group:		System/Kernel and hardware
 Url:		http://www.broadcom.com/support/crystal_hd/
-# http://git.wilsonet.com/crystalhd.git/
-# firmware has no license yet
-Source0:	%{name}-nofirmware-%{snap}.tar.xz
+# http://git.linuxtv.org/jarod/crystalhd.git
+Source0:	%{name}-%{snap}.tar.xz
 
 %description
 Driver and support library for Broadcom Crystal HD hardware video
