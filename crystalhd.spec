@@ -12,6 +12,7 @@ Group:		System/Kernel and hardware
 Url:		http://www.broadcom.com/support/crystal_hd/
 # http://git.linuxtv.org/jarod/crystalhd.git
 Source0:	%{name}-%{snap}.tar.xz
+Source1:	%{name}.rpmlintrc
 
 %description
 Driver and support library for Broadcom Crystal HD hardware video
