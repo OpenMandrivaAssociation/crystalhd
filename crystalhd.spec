@@ -1,12 +1,12 @@
-%define snap	20121105
-%define major	3
-%define libname	%mklibname crystalhd %{major}
-%define devname	%mklibname crystalhd -d
+%define snap 20121105
+%define major 3
+%define libname %mklibname crystalhd %{major}
+%define devname %mklibname crystalhd -d
 
 Summary:	Broadcom Crystal HD decoder driver and library
 Name:		crystalhd
 Version:	0
-Release:	0.%{snap}.1
+Release:	0.%{snap}.2
 License:	GPLv2 and LGPLv2
 Group:		System/Kernel and hardware
 Url:		http://www.broadcom.com/support/crystal_hd/
@@ -96,7 +96,7 @@ EOF
 
 %build
 %setup_compile_flags
-%make -C linux_lib/libcrystalhd BCGCC="g++ %{optflags} %{?ldflags}"
+%make -C linux_lib/libcrystalhd BCGCC="%{cxx} %{optflags} %{?ldflags}"
 
 mkdir -p firmware/fwbin/70015
 touch firmware/fwbin/70015/bcm70015fw.bin
