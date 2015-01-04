@@ -6,7 +6,7 @@
 Summary:	Broadcom Crystal HD decoder driver and library
 Name:		crystalhd
 Version:	0
-Release:	0.%{snap}.2
+Release:	0.%{snap}.3
 License:	GPLv2 and LGPLv2
 Group:		System/Kernel and hardware
 Url:		http://www.broadcom.com/support/crystal_hd/
@@ -96,7 +96,7 @@ EOF
 
 %build
 %setup_compile_flags
-%make -C linux_lib/libcrystalhd BCGCC="%{cxx} %{optflags} %{?ldflags}"
+%make -C linux_lib/libcrystalhd BCGCC="$CXX %{optflags} %{?ldflags}"
 
 mkdir -p firmware/fwbin/70015
 touch firmware/fwbin/70015/bcm70015fw.bin
