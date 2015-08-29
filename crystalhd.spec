@@ -79,7 +79,6 @@ applications that use libcrystalhd.
 
 %prep
 %setup -qn %{name}-%{snap}
-%apply_patches
 
 # for install target
 mkdir -p firmware/fwbin/70012
