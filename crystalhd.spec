@@ -94,8 +94,8 @@ file to the /lib/firmware directory:
 EOF
 
 %build
-export CFLAGS="%{optflags} -Oz"
-export CXXFLAGS="%{optflags} -Oz"
+export CFLAGS="%{optflags}"
+export CXXFLAGS="%{optflags}"
 export LDFLAGS="%{ldflags}"
 
 %make -C linux_lib/libcrystalhd BCGCC="$CXX $CXXFLAGS $LDFLAGS"
