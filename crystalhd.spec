@@ -94,6 +94,7 @@ file to the /lib/firmware directory:
 EOF
 
 %build
+export CXX=g++
 export CFLAGS="%{optflags}"
 export CXXFLAGS="%{optflags}"
 export LDFLAGS="%{ldflags}"
