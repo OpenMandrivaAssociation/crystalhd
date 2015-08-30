@@ -95,8 +95,6 @@ file to the /lib/firmware directory:
 EOF
 
 %build
-export CC=/usr/bin/clang
-export CXX=/usr/bin/clang++
 export CFLAGS="%{optflags} -Oz -Qunused-arguments"
 export CXXFLAGS="%{optflags} -Oz -Qunused-arguments"
 export LDFLAGS="%{ldflags}"
