@@ -14,7 +14,6 @@ Url:		http://www.broadcom.com/support/crystal_hd/
 Source0:	%{name}-%{snap}.tar.xz
 Source1:	%{name}.rpmlintrc
 
-BuildRequires: 	clang
 %description
 Driver and support library for Broadcom Crystal HD hardware video
 decoder.
@@ -95,8 +94,8 @@ file to the /lib/firmware directory:
 EOF
 
 %build
-export CFLAGS="%{optflags} -Oz -Qunused-arguments"
-export CXXFLAGS="%{optflags} -Oz -Qunused-arguments"
+export CFLAGS="%{optflags} -Oz"
+export CXXFLAGS="%{optflags} -Oz"
 export LDFLAGS="%{ldflags}"
 
 %make -C linux_lib/libcrystalhd BCGCC="$CXX $CXXFLAGS $LDFLAGS"
