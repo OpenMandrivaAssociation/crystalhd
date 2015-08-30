@@ -97,9 +97,9 @@ EOF
 %build
 export CC=/usr/bin/clang
 export CXX=/usr/bin/clang++
-export CFLAGS='-Oz -gdwarf-4 -Wstrict-aliasing=2 -pipe -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4  -fPIC -flto'
-export CXXFLAGS='-Oz -gdwarf-4 -Wstrict-aliasing=2 -pipe -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4  -fPIC -flto'
-export LDFLAGS='-Oz -gdwarf-4 -Wstrict-aliasing=2 -pipe -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4  -fPIC -flto -Wl,-O2  -Wl,--no-undefined -flto '
+export CFLAGS="%{optflags} -Oz "
+export CXXFLAGS="%{optflags} -Oz"
+export LDFLAGS="%{ldflags}"
 
 %make -C linux_lib/libcrystalhd BCGCC="$CXX $CXXFLAGS $LDFLAGS"
 
