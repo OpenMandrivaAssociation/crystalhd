@@ -6,7 +6,7 @@
 Summary:	Broadcom Crystal HD decoder driver and library
 Name:		crystalhd
 Version:	0
-Release:	0.%{snap}.3
+Release:	0.%{snap}.4
 License:	GPLv2 and LGPLv2
 Group:		System/Kernel and hardware
 Url:		http://www.broadcom.com/support/crystal_hd/
