@@ -13,6 +13,8 @@ Url:		http://www.broadcom.com/support/crystal_hd/
 # http://git.linuxtv.org/jarod/crystalhd.git
 Source0:	%{name}-%{snap}.tar.xz
 Source1:	%{name}.rpmlintrc
+# Uses emmintrin.h
+ExclusiveArch:	%{ix86} x86_64
 
 %description
 Driver and support library for Broadcom Crystal HD hardware video
