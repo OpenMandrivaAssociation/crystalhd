@@ -1,0 +1,409 @@
+--- crystalhd-20110315/linux_lib/libcrystalhd/libcrystalhd_int_if.cpp	2011-03-14 20:02:54.000000000 +0000
++++ libcrystalhd_int_if.cpp	2015-12-23 17:01:45.580658793 +0000
+@@ -33,8 +33,6 @@
+ #include "libcrystalhd_int_if.h"
+ #include "libcrystalhd_fwcmds.h"
+ 
+-#include <emmintrin.h>
+-
+ #define SV_MAX_LINE_SZ 128
+ #define PCI_GLOBAL_CONTROL MISC2_GLOBAL_CTRL
+ #define PCI_INT_STS_REG MISC2_INTERNAL_STATUS
+@@ -1424,45 +1422,8 @@
+ 	return BC_STS_SUCCESS;
+ }
+ 
+-// TODO: add sse2 detection
+-static bool gSSE2 = true; // most of the platforms will have it anyway:
+-// 64 bits: no test necessary
+-// mac: no test necessary
+-// linux/windows: we might have to do the test.
+-
+ static void fast_memcpy(uint8_t *dst, const uint8_t *src, uint32_t count)
+ {
+-	// tested
+-	if (gSSE2)
+-	{
+-		if (((((uintptr_t) dst) & 0xf) == 0) && ((((uintptr_t) src) & 0xf) == 0))
+-		{
+-			while (count >= (16*4))
+-			{
+-				_mm_stream_si128((__m128i *) (dst+ 0*16),  _mm_load_si128((__m128i *) (src+ 0*16)));
+-				_mm_stream_si128((__m128i *) (dst+ 1*16),  _mm_load_si128((__m128i *) (src+ 1*16)));
+-				_mm_stream_si128((__m128i *) (dst+ 2*16),  _mm_load_si128((__m128i *) (src+ 2*16)));
+-				_mm_stream_si128((__m128i *) (dst+ 3*16),  _mm_load_si128((__m128i *) (src+ 3*16)));
+-				count -= 16*4;
+-				src += 16*4;
+-				dst += 16*4;
+-			}
+-		}
+-		else
+-		{
+-			while (count >= (16*4))
+-			{
+-				_mm_storeu_si128((__m128i *) (dst+ 0*16),  _mm_loadu_si128((__m128i *) (src+ 0*16)));
+-				_mm_storeu_si128((__m128i *) (dst+ 1*16),  _mm_loadu_si128((__m128i *) (src+ 1*16)));
+-				_mm_storeu_si128((__m128i *) (dst+ 2*16),  _mm_loadu_si128((__m128i *) (src+ 2*16)));
+-				_mm_storeu_si128((__m128i *) (dst+ 3*16),  _mm_loadu_si128((__m128i *) (src+ 3*16)));
+-				count -= 16*4;
+-				src += 16*4;
+-				dst += 16*4;
+-			}
+-		}
+-	}
+-
+ 	while (count --)
+ 		*dst++ = *src++;
+ }
+@@ -1504,32 +1465,6 @@
+ 
+ 	for (__y = 0; __y < height; __y++)
+ 	{
+-		if (gSSE2)
+-		{
+-			if (((((uintptr_t) dstY) & 0xf) == 0) && ((((uintptr_t) srcY) & 0xf) == 0))
+-			{
+-				while (x < srcWidth-7)
+-				{
+-					__m128i v = _mm_load_si128((__m128i *)(srcY+x*2));
+-					__m128i v1 = _mm_srli_epi16(v, 8);
+-					__m128i v2 = _mm_slli_epi16(v, 8);
+-					_mm_stream_si128((__m128i *)(dstY+x*2), _mm_or_si128(v1, v2));
+-					x += 8;
+-				}
+-			}
+-			else
+-			{
+-				while (x < srcWidth-7)
+-				{
+-					__m128i v = _mm_loadu_si128((__m128i *)(srcY+x*2));
+-					__m128i v1 = _mm_srli_epi16(v, 8);
+-					__m128i v2 = _mm_slli_epi16(v, 8);
+-					_mm_storeu_si128((__m128i *)(dstY+x*2), _mm_or_si128(v1, v2));
+-					x += 8;
+-				}
+-			}
+-		}
+-
+ 		while (x < srcWidth-1)
+ 		{
+ 			dstY[x*2+0] = srcY[x+1];
+@@ -1554,59 +1489,11 @@
+ 	strideY += dstWidth;
+ 	strideUV += dstWidth;
+ 
+-	static __m128i mask = _mm_set_epi16(0x00ff, 0x00ff, 0x00ff, 0x00ff, 0x00ff, 0x00ff, 0x00ff, 0x00ff);
+-
+ 	for (__y = 0; __y < height; __y += 2)
+ 	{
+ 		x = 0;
+ 
+ 		// first line: Y and UV extraction
+-
+-		if (gSSE2)
+-		{
+-			if (((((uintptr_t) dstY) & 0xf) == 0) && ((((uintptr_t) srcY) & 0xf) == 0) && ((((uintptr_t) dstUV) & 0xf) == 0))
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i s1 = _mm_load_si128((__m128i *) (srcY+x*2+ 0)); // load 8 pixels
+-					__m128i s2 = _mm_load_si128((__m128i *) (srcY+x*2+16)); // load 8 more
+-
+-					__m128i y1 = _mm_and_si128(s1, mask); // mask out uvs
+-					__m128i y2 = _mm_and_si128(s2, mask); // mask out uvs
+-					__m128i y = _mm_packus_epi16 (y1, y2); // get the y together
+-					_mm_stream_si128((__m128i *) (dstY+x), y); // store 16 Y
+-
+-					s1 = _mm_srli_epi16(s1, 8); // get rid of Y
+-					s2 = _mm_srli_epi16(s2, 8); // get rid of Y
+-					__m128i uv = _mm_packus_epi16 (s1, s2); // get the uv together
+-					_mm_stream_si128((__m128i *) (dstUV+x), uv); // store 8 UV pairs
+-
+-					x += 16;
+-				}
+-			}
+-			else
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i s1 = _mm_loadu_si128((__m128i *) (srcY+x*2+ 0)); // load 8 pixels
+-					__m128i s2 = _mm_loadu_si128((__m128i *) (srcY+x*2+16)); // load 8 more
+-
+-					__m128i y1 = _mm_and_si128(s1, mask); // mask out uvs
+-					__m128i y2 = _mm_and_si128(s2, mask); // mask out uvs
+-					__m128i y = _mm_packus_epi16 (y1, y2); // get the y together
+-					_mm_storeu_si128((__m128i *) (dstY+x), y); // store 16 Y
+-
+-					s1 = _mm_srli_epi16(s1, 8); // get rid of Y
+-					s2 = _mm_srli_epi16(s2, 8); // get rid of Y
+-					__m128i uv = _mm_packus_epi16 (s1, s2); // get the uv together
+-					_mm_storeu_si128((__m128i *) (dstUV+x), uv); // store 8 UV pairs
+-
+-					x += 16;
+-				}
+-			}
+-		}
+-
+-
+ 		while (x < srcWidth-1)
+ 		{
+ 			dstY [x+0] = srcY[x*2+0]; // Y
+@@ -1622,40 +1509,6 @@
+ 
+ 		// second line: just Y
+ 		x = 0;
+-		if (gSSE2)
+-		{
+-			if (((((uintptr_t) dstY) & 0xf) == 0) && ((((uintptr_t) srcY) & 0xf) == 0))
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i s1 = _mm_load_si128((__m128i *) (srcY+x*2+ 0)); // load 8 pixels
+-					__m128i s2 = _mm_load_si128((__m128i *) (srcY+x*2+16)); // load 8 more
+-
+-					__m128i y1 = _mm_and_si128(s1, mask); // mask out uvs
+-					__m128i y2 = _mm_and_si128(s2, mask); // mask out uvs
+-					__m128i y = _mm_packus_epi16 (y1, y2); // get the y
+-					_mm_stream_si128((__m128i *) (dstY+x), y); // store 16 Y
+-
+-					x += 16;
+-				}
+-			}
+-			else
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i s1 = _mm_loadu_si128((__m128i *) (srcY+x*2+ 0)); // load 8 pixels
+-					__m128i s2 = _mm_loadu_si128((__m128i *) (srcY+x*2+16)); // load 8 more
+-
+-					__m128i y1 = _mm_and_si128(s1, mask); // mask out uvs
+-					__m128i y2 = _mm_and_si128(s2, mask); // mask out uvs
+-					__m128i y = _mm_packus_epi16 (y1, y2); // get the y
+-					_mm_storeu_si128((__m128i *) (dstY+x), y); // store 16 Y
+-
+-					x += 16;
+-				}
+-			}
+-		}
+-
+ 		while (x < srcWidth-1)
+ 		{
+ 			dstY [x+0] = srcY[x*2+0]; // Y
+@@ -1692,34 +1545,6 @@
+ 		// first line
+ 		x = 0;
+ 
+-		if (gSSE2)
+-		{
+-			if (((((uintptr_t) dstY) & 0xf) == 0) && ((((uintptr_t) srcY) & 0xf) == 0))
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_load_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv = _mm_load_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					_mm_stream_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(y, uv)); // store 8 pixels
+-					_mm_stream_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(y, uv)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-			else
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_loadu_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv = _mm_loadu_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(y, uv)); // store 8 pixels
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(y, uv)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-		}
+-
+ 		while (x < srcWidth-1)
+ 		{
+ 			dstY[x*2+0] = srcY [x+0];
+@@ -1737,38 +1562,6 @@
+ 
+ 		x = 0;
+ 
+-		if (gSSE2)
+-		{
+-			if (((((uintptr_t) dstY) & 0xf) == 0) && ((((uintptr_t) srcY) & 0xf) == 0))
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_load_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv1 = _mm_load_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					__m128i uv2 = _mm_load_si128((__m128i *) (srcUV+x+srcWidth)); // load 8 UV
+-					__m128i uv = _mm_avg_epu8(uv1, uv2);
+-					_mm_stream_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(y, uv)); // store 8 pixels
+-					_mm_stream_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(y, uv)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-			else
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_loadu_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv1 = _mm_loadu_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					__m128i uv2 = _mm_loadu_si128((__m128i *) (srcUV+x+srcWidth)); // load 8 UV
+-					__m128i uv = _mm_avg_epu8(uv1, uv2);
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(y, uv)); // store 8 pixels
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(y, uv)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-		}
+-
+ 		while (x < srcWidth-1)
+ 		{
+ 			dstY[x*2+0] = srcY [x+0];
+@@ -1791,34 +1584,6 @@
+ 	{
+ 		x = 0;
+ 
+-		if (gSSE2)
+-		{
+-			if (((((uintptr_t) dstY) & 0xf) == 0) && ((((uintptr_t) srcY) & 0xf) == 0))
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_load_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv = _mm_load_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					_mm_stream_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(y, uv)); // store 8 pixels
+-					_mm_stream_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(y, uv)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-			else
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_loadu_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv = _mm_loadu_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(y, uv)); // store 8 pixels
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(y, uv)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-		}
+-
+ 		while (x < srcWidth-1)
+ 		{
+ 			dstY[x*2+0] = srcY [x+0];
+@@ -1851,34 +1616,6 @@
+ 		// first line
+ 		x = 0;
+ 
+-		if (gSSE2)
+-		{
+-			if (((((uintptr_t) dstY) & 0xf) == 0) && ((((uintptr_t) srcY) & 0xf) == 0))
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_load_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv = _mm_load_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					_mm_stream_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(uv, y)); // store 8 pixels
+-					_mm_stream_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(uv, y)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-			else
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_loadu_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv = _mm_loadu_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(uv, y)); // store 8 pixels
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(uv, y)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-		}
+-
+ 		while (x < srcWidth-1)
+ 		{
+ 			dstY[x*2+1] = srcY [x+0];
+@@ -1896,38 +1633,6 @@
+ 
+ 		x = 0;
+ 
+-		if (gSSE2)
+-		{
+-			if (((((uintptr_t) dstY) & 0xf) == 0) && ((((uintptr_t) srcY) & 0xf) == 0))
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_load_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv1 = _mm_load_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					__m128i uv2 = _mm_load_si128((__m128i *) (srcUV+x+srcWidth)); // load 8 UV
+-					__m128i uv = _mm_avg_epu8(uv1, uv2);
+-					_mm_stream_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(uv, y)); // store 8 pixels
+-					_mm_stream_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(uv, y)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-			else
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_loadu_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv1 = _mm_loadu_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					__m128i uv2 = _mm_loadu_si128((__m128i *) (srcUV+x+srcWidth)); // load 8 UV
+-					__m128i uv = _mm_avg_epu8(uv1, uv2);
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(uv, y)); // store 8 pixels
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(uv, y)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-		}
+-
+ 		while (x < srcWidth-1)
+ 		{
+ 			dstY[x*2+1] = srcY [x+0];
+@@ -1948,34 +1653,6 @@
+ 	{
+ 		x = 0;
+ 
+-		if (gSSE2)
+-		{
+-			if (((((uintptr_t) dstY) & 0xf) == 0) && ((((uintptr_t) srcY) & 0xf) == 0))
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_load_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv = _mm_load_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					_mm_stream_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(uv, y)); // store 8 pixels
+-					_mm_stream_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(uv, y)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-			else
+-			{
+-				while (x < srcWidth-15)
+-				{
+-					__m128i y = _mm_loadu_si128((__m128i *) (srcY+x)); // load 16 Y pixels
+-					__m128i uv = _mm_loadu_si128((__m128i *) (srcUV+x)); // load 8 UV
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+ 0), _mm_unpacklo_epi8(uv, y)); // store 8 pixels
+-					_mm_storeu_si128((__m128i *) (dstY+x*2+16), _mm_unpackhi_epi8(uv, y)); // store 8 pixels
+-
+-					x += 16;
+-				}
+-			}
+-		}
+-
+ 		while (x < srcWidth-1)
+ 		{
+ 			dstY[x*2+1] = srcY [x+0];
