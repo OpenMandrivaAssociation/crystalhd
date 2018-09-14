@@ -6,15 +6,17 @@
 Summary:	Broadcom Crystal HD decoder driver and library
 Name:		crystalhd
 Version:	0
-Release:	0.%{snap}.4
+Release:	0.%{snap}.5
 License:	GPLv2 and LGPLv2
 Group:		System/Kernel and hardware
 Url:		http://www.broadcom.com/support/crystal_hd/
 # http://git.linuxtv.org/jarod/crystalhd.git
 Source0:	%{name}-%{snap}.tar.xz
 Source1:	%{name}.rpmlintrc
+Patch0:         crystalhd-remove-msse2-gcc.patch
+Patch1:		crystalhd-no-sse2.patch
 # Uses emmintrin.h
-ExclusiveArch:	%{ix86} x86_64
+ExclusiveArch:	%{ix86} %{x86_64}
 
 %description
 Driver and support library for Broadcom Crystal HD hardware video
@@ -31,6 +33,7 @@ Group:		System/Kernel and hardware
 License:	GPLv2
 Requires:	dkms
 Requires(post,preun):	dkms
+Requires(post,preun):	rpm-helper
 
 %description -n dkms-%{name}
 DKMS driver for Broadcom Crystal HD hardware video decoder.
@@ -44,6 +47,7 @@ the /lib/firmware directory:
 Summary:	udev rules for Broadcom Crystal HD decoder
 Group:		System/Libraries
 License:	LGPLv2
+Requires(post):	rpm-helper
 
 %description -n lib%{name}-common
 udev rules for Broadcom Crystal HD hardware video decoder.
@@ -81,20 +85,16 @@ applications that use libcrystalhd.
 
 %prep
 %setup -qn %{name}-%{snap}
-%apply_patches
+%ifarch %{armx}
+# Should we also disable sse2 on i586?
+%autopatch -p1
+%endif
 
 # for install target
 mkdir -p firmware/fwbin/70012
 touch firmware/fwbin/70012/bcm70012fw.bin
 
 sed -i 's,\$(CRYSTALHD_ROOT),\$(src),g' driver/linux/Makefile.in
-
-cat > README.install.urpmi <<EOF
-To use a Crystal HD device, you need to copy the appropriate firmware
-file to the /lib/firmware directory:
-- BCM70012 devices: bcm70012fw.bin
-- BCM70015 devices: bcm70015fw.bin
-EOF
 
 %build
 %setup_compile_flags
@@ -142,11 +142,12 @@ true
 %post -n lib%{name}-common
 # apply udev rules
 if [ "$1" = "1" ]; then
-	udevadm trigger --sysname-match=crystalhd || true
-fi
+	if [ -x /bin/udevadm ]; then
+		/bin/udevadm trigger --sysname-match=crystalhd ||:
+	fi
+if
 
 %files -n dkms-%{name}
-%doc README.install.urpmi
 %dir %{_usrsrc}/%{name}-%{version}-%{release}
 %dir %{_usrsrc}/%{name}-%{version}-%{release}/driver
 %{_usrsrc}/%{name}-%{version}-%{release}/driver/linux
@@ -164,4 +165,3 @@ fi
 %{_libdir}/libcrystalhd.so
 %dir %{_includedir}/lib%{name}
 %{_includedir}/lib%{name}/*.h
-
