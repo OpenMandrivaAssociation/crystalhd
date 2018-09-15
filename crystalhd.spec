@@ -6,7 +6,7 @@
 Summary:	Broadcom Crystal HD decoder driver and library
 Name:		crystalhd
 Version:	0
-Release:	0.%{snap}.5
+Release:	0.%{snap}.6
 License:	GPLv2 and LGPLv2
 Group:		System/Kernel and hardware
 Url:		http://www.broadcom.com/support/crystal_hd/
@@ -47,7 +47,6 @@ the /lib/firmware directory:
 Summary:	udev rules for Broadcom Crystal HD decoder
 Group:		System/Libraries
 License:	LGPLv2
-Requires(post):	rpm-helper
 
 %description -n lib%{name}-common
 udev rules for Broadcom Crystal HD hardware video decoder.
@@ -139,13 +138,6 @@ true
 dkms remove  -m %{name} -v %{version}-%{release} --rpm_safe_upgrade --all
 true
 
-%post -n lib%{name}-common
-# apply udev rules
-if [ "$1" = "1" ]; then
-	if [ -x /bin/udevadm ]; then
-		/bin/udevadm trigger --sysname-match=crystalhd ||:
-	fi
-if
 
 %files -n dkms-%{name}
 %dir %{_usrsrc}/%{name}-%{version}-%{release}
