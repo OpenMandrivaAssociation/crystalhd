@@ -16,7 +16,7 @@ Source1:	%{name}.rpmlintrc
 Patch0:         crystalhd-remove-msse2-gcc.patch
 Patch1:		crystalhd-no-sse2.patch
 # Uses emmintrin.h
-ExclusiveArch:	%{ix86} %{x86_64}
+#ExclusiveArch:	%{ix86} %{x86_64}
 
 %description
 Driver and support library for Broadcom Crystal HD hardware video
