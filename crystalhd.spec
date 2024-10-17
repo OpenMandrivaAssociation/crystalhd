@@ -9,7 +9,7 @@ Version:	20220825
 Release:	0.%{snap}1
 License:	GPLv2 and LGPLv2
 Group:		System/Kernel and hardware
-Url:		http://www.broadcom.com/support/crystal_hd/
+Url:		https://www.broadcom.com/support/crystal_hd/
 # http://git.linuxtv.org/jarod/crystalhd.git
 Source0:	%{name}-%{snap}.tar.xz
 Source1:	%{name}.rpmlintrc
